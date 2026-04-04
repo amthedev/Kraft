@@ -1,0 +1,442 @@
+{% extends "base.html" %}
+{% block title %}Projeto{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full" x-data="projectPage({{ project_id }})" x-init="init()">
+
+  <!-- Top header -->
+  <div class="flex items-center gap-4 px-5 py-3.5 border-b border-kraft-border bg-kraft-surface shrink-0">
+    <a href="/" class="text-kraft-muted hover:text-kraft-text transition-colors text-sm flex items-center gap-1.5">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+      </svg>
+      Projetos
+    </a>
+    <div class="w-px h-4 bg-kraft-border"></div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-3">
+        <h2 class="font-bold text-kraft-text text-sm truncate" x-text="project.name || 'Carregando...'"></h2>
+        <!-- Status timeline -->
+        <div class="hidden lg:flex items-center gap-1">
+          <template x-for="(step, i) in statusSteps" :key="step.key">
+            <div class="flex items-center">
+              <div class="flex items-center gap-1">
+                <div class="w-1.5 h-1.5 rounded-full transition-all"
+                  :class="isStepDone(step.key) ? 'bg-kraft-accent' : isStepActive(step.key) ? 'bg-yellow-400 animate-pulse' : 'bg-kraft-border'">
+                </div>
+                <span class="text-xs transition-colors"
+                  :class="isStepDone(step.key) ? 'text-kraft-accent' : isStepActive(step.key) ? 'text-yellow-400' : 'text-kraft-muted/50'"
+                  x-text="step.label">
+                </span>
+              </div>
+              <div x-show="i < statusSteps.length - 1" class="w-4 h-px bg-kraft-border/50 mx-1"></div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <button @click="triggerBuild()" :disabled="['building','generating'].includes(project.status)"
+        class="text-xs bg-kraft-accent hover:bg-violet-500 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg transition-colors font-medium flex items-center gap-1.5">
+        <div x-show="project.status === 'building'" class="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+        <span x-text="project.status === 'building' ? 'Building...' : 'Build Web'"></span>
+      </button>
+      <a :href="`/projects/${project.id}/preview`"
+        class="text-xs border border-kraft-border hover:border-kraft-accent text-kraft-muted hover:text-kraft-text px-3 py-1.5 rounded-lg transition-colors">
+        Preview
+      </a>
+    </div>
+  </div>
+
+  <!-- Body: chat (left) + tabs (right) -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Chat panel (left) -->
+    <div class="flex flex-col w-96 border-r border-kraft-border shrink-0">
+
+      <!-- Messages -->
+      <div class="flex-1 overflow-y-auto p-4 space-y-3" id="messages-container">
+        <template x-for="msg in messages" :key="msg.id">
+          <div class="flex" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
+            <div class="max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
+              :class="msg.role === 'user'
+                ? 'bg-gradient-to-br from-violet-600 to-purple-700 text-white rounded-br-sm'
+                : 'bg-kraft-surface border border-kraft-border text-kraft-text rounded-bl-sm'">
+              <p x-text="msg.content"></p>
+              <span x-show="msg.action_triggered"
+                class="flex items-center gap-1 mt-1.5 text-xs opacity-60"
+                x-text="'→ ' + msg.action_triggered">
+              </span>
+            </div>
+          </div>
+        </template>
+
+        <!-- Loading typing indicator -->
+        <div x-show="loading" class="flex justify-start">
+          <div class="bg-kraft-surface border border-kraft-border px-4 py-3 rounded-2xl rounded-bl-sm">
+            <div class="flex gap-1.5 items-center">
+              <div class="w-1.5 h-1.5 bg-kraft-accent rounded-full animate-bounce" style="animation-delay:0ms"></div>
+              <div class="w-1.5 h-1.5 bg-kraft-accent rounded-full animate-bounce" style="animation-delay:150ms"></div>
+              <div class="w-1.5 h-1.5 bg-kraft-accent rounded-full animate-bounce" style="animation-delay:300ms"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty state do chat -->
+        <div x-show="messages.length === 0 && !loading" class="flex flex-col items-center justify-center h-full py-12 text-center">
+          <div class="w-10 h-10 rounded-xl bg-kraft-accent/10 border border-kraft-accent/20 flex items-center justify-center mb-3">
+            <svg class="w-5 h-5 text-kraft-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+            </svg>
+          </div>
+          <p class="text-sm text-kraft-text font-medium mb-1">Descreva seu jogo</p>
+          <p class="text-xs text-kraft-muted">Gênero, mecânicas, estilo visual, personagens...</p>
+        </div>
+      </div>
+
+      <!-- Input area -->
+      <div class="p-4 border-t border-kraft-border">
+        <div class="flex gap-2">
+          <textarea x-model="input"
+            @keydown.enter.prevent="if(!$event.shiftKey) sendMessage()"
+            @keydown.ctrl.enter.prevent="sendMessage()"
+            placeholder="Descreva seu jogo, peça mudanças, adicione mecânicas..."
+            rows="3"
+            class="flex-1 bg-kraft-bg border border-kraft-border rounded-xl px-3 py-2.5 text-sm text-kraft-text focus:outline-none focus:border-kraft-accent focus:ring-1 focus:ring-kraft-accent/30 transition-colors resize-none placeholder-kraft-muted leading-relaxed">
+          </textarea>
+          <button @click="sendMessage()" :disabled="loading || !input.trim()"
+            class="self-end bg-kraft-accent hover:bg-violet-500 disabled:opacity-40 text-white p-2.5 rounded-xl transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+            </svg>
+          </button>
+        </div>
+        <div class="flex items-center justify-between mt-2">
+          <p class="text-xs text-kraft-muted/60">Enter envia · Shift+Enter nova linha</p>
+          <span class="text-xs text-kraft-muted/60">
+            <span class="text-kraft-accent" x-text="$store.ui.user?.credits ?? '–'"></span> créditos
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right panel: tabs -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+
+      <!-- Tab bar -->
+      <div class="flex border-b border-kraft-border bg-kraft-surface shrink-0">
+        <template x-for="tab in tabs" :key="tab.key">
+          <button @click="activeTab = tab.key"
+            class="px-5 py-3.5 text-xs font-medium transition-colors border-b-2 relative"
+            :class="activeTab === tab.key
+              ? 'border-kraft-accent text-kraft-text'
+              : 'border-transparent text-kraft-muted hover:text-kraft-text'">
+            <span x-text="tab.label"></span>
+          </button>
+        </template>
+      </div>
+
+      <!-- TAB: Arquivos -->
+      <div x-show="activeTab === 'files'" class="flex-1 overflow-auto p-6">
+        <h3 class="text-xs text-kraft-muted uppercase tracking-wider mb-4">Representação do Jogo (IR)</h3>
+        <div class="space-y-3">
+          <template x-for="graph in graphPanels" :key="graph.key">
+            <details x-show="project[graph.key]" class="bg-kraft-surface border border-kraft-border rounded-xl overflow-hidden group">
+              <summary class="flex items-center justify-between px-4 py-3 text-xs font-medium text-kraft-text cursor-pointer hover:bg-kraft-border/30 transition-colors list-none">
+                <div class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full bg-kraft-accent/60"></div>
+                  <span x-text="graph.label"></span>
+                </div>
+                <svg class="w-3.5 h-3.5 text-kraft-muted transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </summary>
+              <pre class="px-4 pb-4 text-xs text-kraft-muted overflow-auto max-h-56 leading-relaxed border-t border-kraft-border/50 pt-3"
+                x-text="JSON.stringify(project[graph.key], null, 2)">
+              </pre>
+            </details>
+          </template>
+          <div x-show="!hasAnyGraph" class="text-center py-12 text-kraft-muted text-sm">
+            Nenhum grafo gerado ainda. Converse com a IA no chat.
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Assets -->
+      <div x-show="activeTab === 'assets'" class="flex-1 overflow-auto p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xs text-kraft-muted uppercase tracking-wider">Assets Gerados</h3>
+          <span class="text-xs text-kraft-muted" x-text="assets.length + ' assets'"></span>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <template x-for="asset in assets" :key="asset.id">
+            <div class="group relative bg-kraft-bg border border-kraft-border rounded-xl p-3 hover:border-kraft-border/80 transition-colors">
+              <div class="aspect-square bg-kraft-surface rounded-lg mb-2.5 flex items-center justify-center overflow-hidden">
+                <img x-show="asset.url && ['sprite','tileset','ui'].includes(asset.type)"
+                  :src="asset.url" :alt="asset.name"
+                  class="w-full h-full object-contain"
+                  style="image-rendering: pixelated" />
+                <div x-show="!asset.url || !['sprite','tileset','ui'].includes(asset.type)"
+                  class="flex flex-col items-center text-kraft-muted">
+                  <span class="text-xs font-medium" x-text="asset.type"></span>
+                </div>
+              </div>
+              <p class="text-xs text-kraft-text truncate font-medium" x-text="asset.name"></p>
+              <p class="text-xs text-kraft-muted mt-0.5" x-text="asset.type"></p>
+              <button @click="deleteAsset(asset.id)"
+                class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-red-500/10 text-red-400/60 hover:text-red-400">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </template>
+          <div x-show="assets.length === 0" class="col-span-3 text-center py-12 text-kraft-muted text-sm">
+            Nenhum asset gerado ainda.
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Build -->
+      <div x-show="activeTab === 'build'" class="flex-1 overflow-auto p-6">
+        <div x-show="latestBuild">
+          <div class="flex items-center gap-4 mb-4">
+            <div>
+              <p class="text-xs text-kraft-muted mb-1">Status</p>
+              <span class="text-xs px-2.5 py-1 rounded-full border"
+                :class="{
+                  'border-green-500/30 text-green-400 bg-green-500/10': latestBuild?.status === 'success',
+                  'border-yellow-500/30 text-yellow-400 bg-yellow-500/10': ['running','queued'].includes(latestBuild?.status),
+                  'border-red-500/30 text-red-400 bg-red-500/10': latestBuild?.status === 'failed',
+                }"
+                x-text="latestBuild?.status">
+              </span>
+            </div>
+            <div x-show="latestBuild?.web_url">
+              <p class="text-xs text-kraft-muted mb-1">Web Build</p>
+              <a :href="latestBuild?.web_url" target="_blank"
+                class="text-xs text-kraft-accent hover:text-kraft-accent2 transition-colors">
+                Abrir no navegador →
+              </a>
+            </div>
+            <div x-show="latestBuild?.zip_url">
+              <p class="text-xs text-kraft-muted mb-1">Download</p>
+              <a :href="latestBuild?.zip_url"
+                class="text-xs text-kraft-muted hover:text-kraft-text transition-colors">
+                Baixar projeto ZIP
+              </a>
+            </div>
+          </div>
+          <div x-show="latestBuild?.logs" class="bg-kraft-bg border border-kraft-border rounded-xl p-4">
+            <p class="text-xs text-kraft-muted uppercase tracking-wider mb-2">Logs</p>
+            <pre class="text-xs text-kraft-muted leading-relaxed overflow-auto max-h-64" x-text="latestBuild?.logs"></pre>
+          </div>
+        </div>
+        <div x-show="!latestBuild" class="text-center py-12 text-kraft-muted text-sm">
+          Nenhum build ainda. Clique em "Build Web" para gerar.
+        </div>
+      </div>
+
+      <!-- TAB: Configurações -->
+      <div x-show="activeTab === 'settings'" class="flex-1 overflow-auto p-6">
+        <div class="max-w-md space-y-4">
+          <div>
+            <label class="block text-xs text-kraft-muted mb-1.5">Nome do projeto</label>
+            <input x-model="editName" type="text"
+              class="w-full bg-kraft-bg border border-kraft-border rounded-xl px-4 py-2.5 text-sm text-kraft-text focus:outline-none focus:border-kraft-accent focus:ring-1 focus:ring-kraft-accent/30 transition-colors" />
+          </div>
+          <div>
+            <label class="block text-xs text-kraft-muted mb-1.5">Gênero</label>
+            <input x-model="editGenre" type="text" placeholder="RPG, plataforma, puzzle..."
+              class="w-full bg-kraft-bg border border-kraft-border rounded-xl px-4 py-2.5 text-sm text-kraft-text focus:outline-none focus:border-kraft-accent focus:ring-1 focus:ring-kraft-accent/30 transition-colors placeholder-kraft-muted" />
+          </div>
+          <div class="flex gap-3 pt-2">
+            <button @click="saveSettings()"
+              class="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all">
+              Salvar
+            </button>
+          </div>
+          <!-- Danger zone -->
+          <div class="border border-red-500/20 rounded-xl p-5 mt-8">
+            <h4 class="text-sm font-medium text-red-400 mb-1">Zona de perigo</h4>
+            <p class="text-xs text-kraft-muted mb-4">Esta ação não pode ser desfeita.</p>
+            <button @click="deleteProject()"
+              class="text-xs text-red-400 border border-red-500/25 hover:border-red-500/50 hover:bg-red-500/10 px-4 py-2 rounded-lg transition-colors">
+              Excluir projeto permanentemente
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+function projectPage(projectId) {
+  return {
+    projectId,
+    project: {},
+    messages: [],
+    assets: [],
+    latestBuild: null,
+    input: '',
+    loading: false,
+    activeTab: 'files',
+    editName: '',
+    editGenre: '',
+    ws: null,
+    token: localStorage.getItem('kraft_token'),
+
+    tabs: [
+      { key: 'files', label: 'Arquivos' },
+      { key: 'assets', label: 'Assets' },
+      { key: 'build', label: 'Build' },
+      { key: 'settings', label: 'Configurações' },
+    ],
+
+    graphPanels: [
+      { key: 'gameplay_graph', label: 'gameplay_graph.json' },
+      { key: 'scene_graph', label: 'scene_graph.json' },
+      { key: 'art_bible', label: 'art_bible.json' },
+      { key: 'narrative_graph', label: 'narrative_graph.json' },
+      { key: 'economy_graph', label: 'economy_graph.json' },
+    ],
+
+    statusSteps: [
+      { key: 'draft', label: 'Rascunho' },
+      { key: 'generating', label: 'IA' },
+      { key: 'ready', label: 'Pronto' },
+      { key: 'building', label: 'Build' },
+      { key: 'built', label: 'Publicado' },
+    ],
+
+    statusOrder: ['draft', 'generating', 'ready', 'building', 'built'],
+
+    get hasAnyGraph() {
+      return this.graphPanels.some(g => this.project[g.key])
+    },
+
+    isStepDone(key) {
+      return this.statusOrder.indexOf(this.project.status) > this.statusOrder.indexOf(key)
+    },
+    isStepActive(key) {
+      return this.project.status === key
+    },
+
+    async init() {
+      await Promise.all([this.loadProject(), this.loadMessages(), this.loadAssets(), this.loadLatestBuild()])
+      this.connectWS()
+      this.scrollBottom()
+    },
+
+    async loadProject() {
+      const res = await kraftFetch(`/api/projects/${this.projectId}`)
+      if (res?.ok) {
+        this.project = await res.json()
+        this.editName = this.project.name
+        this.editGenre = this.project.genre || ''
+      }
+    },
+
+    async loadMessages() {
+      const res = await kraftFetch(`/api/chat/${this.projectId}/messages`)
+      if (res?.ok) this.messages = await res.json()
+    },
+
+    async loadAssets() {
+      const res = await kraftFetch(`/api/assets/${this.projectId}`)
+      if (res?.ok) this.assets = await res.json()
+    },
+
+    async loadLatestBuild() {
+      const res = await kraftFetch(`/api/builds/${this.projectId}/latest`)
+      if (res?.ok) this.latestBuild = await res.json()
+    },
+
+    connectWS() {
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws'
+      const token = this.token || ''
+      this.ws = new WebSocket(`${proto}://${location.host}/api/chat/${this.projectId}/ws?token=${encodeURIComponent(token)}`)
+      this.ws.onmessage = async (e) => {
+        const data = JSON.parse(e.data)
+        if (data.status === 'queued') {
+          this.loading = false
+          await Promise.all([this.loadMessages(), this.loadProject(), this.loadAssets()])
+          this.scrollBottom()
+        }
+      }
+    },
+
+    async sendMessage() {
+      if (!this.input.trim() || this.loading) return
+      const content = this.input
+      this.input = ''
+      this.loading = true
+      this.messages.push({ id: Date.now(), role: 'user', content, action_triggered: null })
+      this.scrollBottom()
+
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ content }))
+      } else {
+        const res = await kraftFetch(`/api/chat/${this.projectId}/messages`, {
+          method: 'POST',
+          body: JSON.stringify({ content }),
+        })
+        this.loading = false
+        if (res?.ok) {
+          await this.loadMessages()
+          this.scrollBottom()
+        }
+      }
+    },
+
+    async triggerBuild() {
+      const res = await kraftFetch(`/api/builds/${this.projectId}`, { method: 'POST' })
+      if (res?.ok) {
+        this.latestBuild = await res.json()
+        this.project.status = 'building'
+        this.activeTab = 'build'
+        Alpine.store('ui').addToast('Build iniciado!', 'info')
+      }
+    },
+
+    async saveSettings() {
+      const res = await kraftFetch(`/api/projects/${this.projectId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: this.editName, genre: this.editGenre }),
+      })
+      if (res?.ok) {
+        this.project = await res.json()
+        Alpine.store('ui').addToast('Configurações salvas', 'success')
+      }
+    },
+
+    async deleteProject() {
+      if (!confirm('Excluir projeto permanentemente? Não é possível desfazer.')) return
+      const res = await kraftFetch(`/api/projects/${this.projectId}`, { method: 'DELETE' })
+      if (res && (res.ok || res.status === 204)) {
+        window.location.href = '/'
+      }
+    },
+
+    async deleteAsset(assetId) {
+      const res = await kraftFetch(`/api/assets/${assetId}`, { method: 'DELETE' })
+      if (res && (res.ok || res.status === 204)) {
+        this.assets = this.assets.filter(a => a.id !== assetId)
+        Alpine.store('ui').addToast('Asset removido', 'success')
+      }
+    },
+
+    scrollBottom() {
+      this.$nextTick(() => {
+        const el = document.getElementById('messages-container')
+        if (el) el.scrollTop = el.scrollHeight
+      })
+    },
+  }
+}
+</script>
+{% endblock %}
+{% endblock %}

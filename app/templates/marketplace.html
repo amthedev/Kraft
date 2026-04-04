@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}Loja{% endblock %}
+
+{% block content %}
+<div class="p-8" x-data="marketplacePage()" x-init="init()">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-kraft-text">Loja Kraft</h1>
+      <p class="text-kraft-muted text-sm mt-1">Jogos e assets criados pela comunidade</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="relative">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-kraft-muted pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input x-model="search" @input.debounce="applyFilters()" type="text" placeholder="Buscar..."
+          class="pl-9 pr-4 py-2 bg-kraft-surface border border-kraft-border rounded-lg text-sm text-kraft-text focus:outline-none focus:border-kraft-accent focus:ring-1 focus:ring-kraft-accent/30 transition-colors w-48 placeholder-kraft-muted" />
+      </div>
+      <select x-model="sortBy" @change="applyFilters()"
+        class="bg-kraft-surface border border-kraft-border rounded-lg px-3 py-2 text-sm text-kraft-text focus:outline-none focus:border-kraft-accent transition-colors">
+        <option value="downloads">Mais baixados</option>
+        <option value="newest">Mais recentes</option>
+        <option value="price_asc">Menor preço</option>
+        <option value="price_desc">Maior preço</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- CTA Publicar (se tem projetos built) -->
+  <div x-show="hasBuiltProjects" x-cloak
+    class="flex items-center justify-between p-5 mb-6 bg-violet-500/5 border border-violet-500/20 rounded-2xl">
+    <div>
+      <p class="text-sm font-medium text-kraft-text">Você tem projetos prontos para publicar!</p>
+      <p class="text-xs text-kraft-muted mt-0.5">Compartilhe seu jogo com a comunidade Kraft e comece a vender.</p>
+    </div>
+    <a href="/"
+      class="text-xs bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white px-4 py-2 rounded-lg transition-all font-medium shrink-0">
+      Ver meus projetos →
+    </a>
+  </div>
+
+  <!-- Category chips -->
+  <div class="flex gap-2 flex-wrap mb-6">
+    <button @click="toggleCategory('all')"
+      class="text-xs px-3 py-1.5 rounded-full border transition-colors"
+      :class="selectedCategory === 'all'
+        ? 'bg-kraft-accent border-kraft-accent text-white'
+        : 'border-kraft-border text-kraft-muted hover:border-kraft-accent/50 hover:text-kraft-text'">
+      Todos
+    </button>
+    <template x-for="cat in categories" :key="cat">
+      <button @click="toggleCategory(cat)"
+        class="text-xs px-3 py-1.5 rounded-full border transition-colors"
+        :class="selectedCategory === cat
+          ? 'bg-kraft-accent border-kraft-accent text-white'
+          : 'border-kraft-border text-kraft-muted hover:border-kraft-accent/50 hover:text-kraft-text'">
+        <span x-text="cat"></span>
+      </button>
+    </template>
+    <button @click="filterFree = !filterFree; applyFilters()"
+      class="text-xs px-3 py-1.5 rounded-full border transition-colors"
+      :class="filterFree
+        ? 'bg-green-500/20 border-green-500/40 text-green-400'
+        : 'border-kraft-border text-kraft-muted hover:border-green-500/30 hover:text-green-400'">
+      Grátis
+    </button>
+  </div>
+
+  <!-- Seção Novidades -->
+  <div x-show="newItems.length > 0" class="mb-8">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-1 h-4 bg-gradient-to-b from-violet-500 to-purple-600 rounded-full"></div>
+      <h2 class="text-sm font-bold text-kraft-text">Novidades</h2>
+    </div>
+    <div class="flex gap-4 overflow-x-auto pb-2 scrollbar-thin">
+      <template x-for="item in newItems" :key="item.id">
+        <div class="shrink-0 w-52 bg-kraft-surface border border-kraft-border rounded-xl overflow-hidden hover:border-violet-500/40 transition-all group">
+          <div class="aspect-video bg-kraft-bg flex items-center justify-center text-kraft-muted/20">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+            </svg>
+          </div>
+          <div class="p-3">
+            <p class="text-xs font-medium text-kraft-text truncate" x-text="item.title"></p>
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-xs text-kraft-accent font-medium" x-text="item.price > 0 ? 'R$ ' + item.price.toFixed(2) : 'Grátis'"></span>
+              <span x-show="item.seller_username" class="text-xs text-kraft-muted" x-text="'@' + (item.seller_username || '')"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Grid principal -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <template x-for="item in filtered" :key="item.id">
+      <div class="bg-kraft-surface border border-kraft-border rounded-xl overflow-hidden hover:border-violet-500/40 transition-all group">
+
+        <!-- Cover / Demo -->
+        <div class="relative aspect-video bg-kraft-bg flex items-center justify-center overflow-hidden">
+          <img x-show="item.cover_url" :src="item.cover_url" :alt="item.title"
+            class="w-full h-full object-cover" />
+          <div x-show="!item.cover_url" class="text-kraft-muted/20">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <!-- Demo overlay -->
+          <a x-show="item.demo_url" :href="item.demo_url" target="_blank"
+            class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
+            <span class="bg-kraft-accent text-white text-xs px-4 py-2 rounded-lg font-medium flex items-center gap-2">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              Jogar demo
+            </span>
+          </a>
+        </div>
+
+        <div class="p-4">
+          <h3 class="font-bold text-kraft-text text-sm group-hover:text-violet-300 transition-colors" x-text="item.title"></h3>
+          <p class="text-xs text-kraft-muted mt-1 line-clamp-2" x-text="item.description || ''"></p>
+
+          <!-- Seller + rating row -->
+          <div class="flex items-center justify-between mt-2.5">
+            <span x-show="item.seller_username" class="text-xs text-kraft-muted" x-text="'@' + (item.seller_username || '')"></span>
+            <span x-show="item.rating > 0" class="text-xs text-yellow-400 flex items-center gap-0.5">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+              <span x-text="item.rating.toFixed(1)"></span>
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between mt-3 pt-3 border-t border-kraft-border/50">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-kraft-accent text-sm" x-text="item.price > 0 ? 'R$ ' + item.price.toFixed(2) : 'Grátis'"></span>
+              <span class="text-xs text-kraft-muted" x-text="item.downloads + ' ↓'"></span>
+            </div>
+            <button @click="buyItem(item)"
+              class="text-xs bg-kraft-accent hover:bg-violet-500 text-white px-3 py-1.5 rounded-lg transition-colors font-medium"
+              x-text="item.price > 0 ? 'Comprar' : 'Baixar'">
+            </button>
+          </div>
+
+          <span class="mt-2 inline-block text-xs px-2 py-0.5 rounded-full border border-kraft-border text-kraft-muted/70"
+            x-text="item.license">
+          </span>
+        </div>
+      </div>
+    </template>
+
+    <!-- Empty state -->
+    <div x-show="filtered.length === 0 && !loading" class="col-span-4 text-center py-20 text-kraft-muted">
+      <p class="text-sm font-medium text-kraft-text mb-1">Nenhum item encontrado</p>
+      <p class="text-xs">Tente outros filtros ou categorias.</p>
+    </div>
+
+    <!-- Loading -->
+    <div x-show="loading" class="col-span-4 py-20 flex items-center justify-center">
+      <div class="w-6 h-6 border-2 border-kraft-accent border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+function marketplacePage() {
+  return {
+    items: [],
+    filtered: [],
+    loading: true,
+    search: '',
+    sortBy: 'downloads',
+    selectedCategory: 'all',
+    filterFree: false,
+    hasBuiltProjects: false,
+    categories: ['RPG', 'Plataforma', 'Puzzle', 'Ação', 'Aventura', 'Estratégia'],
+    token: localStorage.getItem('kraft_token'),
+
+    get newItems() {
+      return [...this.items].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 6)
+    },
+
+    async init() {
+      this.loading = true
+      const [marketRes, projectsRes] = await Promise.all([
+        fetch('/api/marketplace'),
+        kraftFetch('/api/projects'),
+      ])
+      if (marketRes.ok) this.items = await marketRes.json()
+      if (projectsRes?.ok) {
+        const projects = await projectsRes.json()
+        this.hasBuiltProjects = projects.some(p => p.status === 'built')
+      }
+      this.applyFilters()
+      this.loading = false
+    },
+
+    toggleCategory(cat) {
+      this.selectedCategory = cat
+      this.applyFilters()
+    },
+
+    applyFilters() {
+      let result = [...this.items]
+      if (this.search) {
+        const q = this.search.toLowerCase()
+        result = result.filter(i => i.title.toLowerCase().includes(q) || (i.description || '').toLowerCase().includes(q))
+      }
+      if (this.selectedCategory !== 'all') {
+        result = result.filter(i => (i.description || '').toLowerCase().includes(this.selectedCategory.toLowerCase()) || (i.title || '').toLowerCase().includes(this.selectedCategory.toLowerCase()))
+      }
+      if (this.filterFree) result = result.filter(i => i.price === 0)
+      if (this.sortBy === 'downloads') result.sort((a, b) => b.downloads - a.downloads)
+      else if (this.sortBy === 'newest') result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      else if (this.sortBy === 'price_asc') result.sort((a, b) => a.price - b.price)
+      else if (this.sortBy === 'price_desc') result.sort((a, b) => b.price - a.price)
+      this.filtered = result
+    },
+
+    async buyItem(item) {
+      if (!this.token) {
+        window.location.href = '/login'
+        return
+      }
+      const res = await kraftFetch(`/api/marketplace/${item.id}/buy`, { method: 'POST' })
+      if (res?.ok) {
+        item.downloads++
+        Alpine.store('ui').addToast(item.price > 0 ? 'Compra realizada!' : 'Download iniciado!', 'success')
+      }
+    },
+  }
+}
+</script>
+{% endblock %}
+{% endblock %}

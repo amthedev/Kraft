@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Preview{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full" x-data="previewPage({{ project_id }})" x-init="init()">
+
+  <!-- Toolbar -->
+  <div class="flex items-center gap-3 px-5 py-3 border-b border-kraft-border bg-kraft-surface shrink-0 flex-wrap">
+    <a :href="`/projects/${projectId}`"
+      class="text-kraft-muted hover:text-kraft-text transition-colors text-sm flex items-center gap-1.5 shrink-0">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+      </svg>
+      Projeto
+    </a>
+    <div class="w-px h-4 bg-kraft-border shrink-0"></div>
+    <span class="text-sm text-kraft-text font-medium truncate" x-text="project.name || '...'"></span>
+    <span class="text-xs px-2 py-0.5 rounded-full border shrink-0"
+      :class="{
+        'border-green-500/30 text-green-400 bg-green-500/10': build?.status === 'success',
+        'border-yellow-500/30 text-yellow-400 bg-yellow-500/10': ['running','queued'].includes(build?.status),
+        'border-red-500/30 text-red-400 bg-red-500/10': build?.status === 'failed',
+        'border-kraft-border text-kraft-muted': !build,
+      }"
+      x-text="build?.status || 'sem build'">
+    </span>
+
+    <div class="flex-1"></div>
+
+    <!-- FPS badge -->
+    <span class="text-xs text-kraft-muted font-mono px-2.5 py-1 bg-kraft-bg border border-kraft-border rounded-lg shrink-0">
+      ~60 fps
+    </span>
+
+    <!-- Resolution -->
+    <select x-model="resolution" @change="applyResolution()"
+      class="bg-kraft-bg border border-kraft-border rounded-lg text-xs text-kraft-muted px-2.5 py-1.5 focus:outline-none focus:border-kraft-accent transition-colors shrink-0">
+      <option value="1280x720">720p</option>
+      <option value="1920x1080">1080p</option>
+      <option value="854x480">480p</option>
+    </select>
+
+    <!-- Share -->
+    <button @click="copyShareLink()"
+      class="text-xs border border-kraft-border hover:border-kraft-accent text-kraft-muted hover:text-kraft-text px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shrink-0">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+      </svg>
+      Compartilhar
+    </button>
+
+    <!-- Fullscreen -->
+    <button @click="toggleFullscreen()"
+      class="text-xs border border-kraft-border hover:border-kraft-accent text-kraft-muted hover:text-kraft-text px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shrink-0">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+      </svg>
+      Fullscreen
+    </button>
+
+    <!-- Rebuild -->
+    <button @click="triggerBuild()" :disabled="building"
+      class="text-xs bg-kraft-accent hover:bg-violet-500 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 font-medium shrink-0">
+      <div x-show="building" class="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+      <span x-text="building ? 'Building...' : 'Rebuild'"></span>
+    </button>
+
+    <!-- Export ZIP -->
+    <a x-show="build?.zip_url" :href="build?.zip_url"
+      class="text-xs border border-kraft-border hover:border-kraft-accent text-kraft-muted hover:text-kraft-text px-3 py-1.5 rounded-lg transition-colors shrink-0">
+      Exportar ZIP
+    </a>
+  </div>
+
+  <!-- Preview area -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Game canvas -->
+    <div class="flex-1 bg-black flex items-center justify-center relative overflow-hidden">
+
+      <!-- No build state -->
+      <div x-show="!build?.web_url && !building" class="text-center text-kraft-muted">
+        <div class="w-16 h-16 rounded-2xl bg-kraft-surface border border-kraft-border flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <p class="text-sm font-medium text-kraft-text mb-1">Sem build disponível</p>
+        <p class="text-xs mb-4">Gere um build web para testar o jogo aqui.</p>
+        <button @click="triggerBuild()"
+          class="bg-kraft-accent hover:bg-violet-500 text-white text-sm px-4 py-2 rounded-lg transition-colors">
+          Gerar build
+        </button>
+      </div>
+
+      <!-- Game iframe -->
+      <iframe
+        x-show="build?.web_url"
+        x-ref="gameFrame"
+        :src="build?.web_url"
+        class="border-0"
+        :style="`width: ${frameWidth}px; height: ${frameHeight}px; max-width: 100%; max-height: 100%;`"
+        allow="fullscreen; gamepad"
+        title="Kraft Game Preview">
+      </iframe>
+
+      <!-- Building overlay -->
+      <div x-show="building"
+        class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-4">
+        <div class="w-10 h-10 border-2 border-kraft-accent border-t-transparent rounded-full animate-spin"></div>
+        <div class="text-center">
+          <p class="text-sm text-kraft-text font-medium">Exportando para Web</p>
+          <p class="text-xs text-kraft-muted mt-1">Godot está compilando o projeto...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Console -->
+    <div class="w-72 border-l border-kraft-border bg-kraft-surface flex flex-col shrink-0">
+      <div class="px-4 py-3 border-b border-kraft-border flex items-center justify-between">
+        <h3 class="text-xs text-kraft-muted uppercase tracking-wider">Console</h3>
+        <span class="text-xs text-kraft-muted" x-text="build ? 'v' + build.version : ''"></span>
+      </div>
+      <div class="flex-1 overflow-auto p-4">
+        <pre class="text-xs text-kraft-muted/70 leading-relaxed font-mono whitespace-pre-wrap"
+          x-text="build?.logs || 'Sem logs disponíveis.'">
+        </pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+function previewPage(projectId) {
+  return {
+    projectId,
+    project: {},
+    build: null,
+    building: false,
+    resolution: '1280x720',
+    frameWidth: 1280,
+    frameHeight: 720,
+    pollInterval: null,
+    token: localStorage.getItem('kraft_token'),
+
+    async init() {
+      await Promise.all([this.loadProject(), this.loadBuild()])
+    },
+
+    async loadProject() {
+      const res = await kraftFetch(`/api/projects/${this.projectId}`)
+      if (res?.ok) this.project = await res.json()
+    },
+
+    async loadBuild() {
+      const res = await kraftFetch(`/api/builds/${this.projectId}/latest`)
+      if (res?.ok) {
+        this.build = await res.json()
+        if (['running','queued'].includes(this.build?.status)) {
+          this.building = true
+          this.startPolling()
+        }
+      }
+    },
+
+    async triggerBuild() {
+      this.building = true
+      this.build = null
+      const res = await kraftFetch(`/api/builds/${this.projectId}`, { method: 'POST' })
+      if (res?.ok) {
+        this.build = await res.json()
+        this.startPolling()
+      }
+    },
+
+    startPolling() {
+      if (this.pollInterval) return
+      this.pollInterval = setInterval(async () => {
+        const res = await kraftFetch(`/api/builds/${this.projectId}/latest`)
+        if (res?.ok) {
+          this.build = await res.json()
+          if (['success','failed'].includes(this.build?.status)) {
+            this.building = false
+            clearInterval(this.pollInterval)
+            this.pollInterval = null
+            if (this.build?.status === 'success') {
+              Alpine.store('ui').addToast('Build concluído!', 'success')
+            } else {
+              Alpine.store('ui').addToast('Build falhou. Veja os logs.', 'error')
+            }
+          }
+        }
+      }, 3000)
+    },
+
+    applyResolution() {
+      const [w, h] = this.resolution.split('x').map(Number)
+      this.frameWidth = w
+      this.frameHeight = h
+    },
+
+    async copyShareLink() {
+      try {
+        await navigator.clipboard.writeText(window.location.href)
+        Alpine.store('ui').addToast('Link copiado!', 'success')
+      } catch {
+        Alpine.store('ui').addToast('Não foi possível copiar o link', 'error')
+      }
+    },
+
+    toggleFullscreen() {
+      const iframe = this.$refs.gameFrame
+      if (iframe?.requestFullscreen) iframe.requestFullscreen()
+    },
+  }
+}
+</script>
+{% endblock %}
+{% endblock %}

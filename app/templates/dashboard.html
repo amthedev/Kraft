@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% block title %}Projetos{% endblock %}
+
+{% block content %}
+<div class="p-8" x-data="dashboard()" x-init="init()">
+
+  <!-- Hero banner -->
+  <div class="relative overflow-hidden rounded-2xl border border-kraft-border bg-kraft-surface p-8 mb-8">
+    <div class="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-violet-600/8 blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-10 -left-10 w-56 h-56 rounded-full bg-purple-600/6 blur-2xl pointer-events-none"></div>
+    <div class="relative">
+      <p class="text-xs text-kraft-accent font-medium uppercase tracking-widest mb-2">Game Creation OS</p>
+      <h1 class="text-3xl font-bold text-kraft-text mb-1">O que você quer criar hoje?</h1>
+      <p class="text-kraft-muted text-sm">Descreva sua ideia — a IA transforma em um jogo jogável no navegador.</p>
+    </div>
+    <!-- Stats -->
+    <div class="relative flex gap-8 mt-6 pt-6 border-t border-kraft-border/50">
+      <div>
+        <p class="text-2xl font-bold text-kraft-text" x-text="projects.length">–</p>
+        <p class="text-xs text-kraft-muted mt-0.5">Projetos</p>
+      </div>
+      <div class="w-px bg-kraft-border"></div>
+      <div>
+        <p class="text-2xl font-bold text-kraft-text" x-text="builtCount">–</p>
+        <p class="text-xs text-kraft-muted mt-0.5">Builds prontos</p>
+      </div>
+      <div class="w-px bg-kraft-border"></div>
+      <div>
+        <p class="text-2xl font-bold text-kraft-accent" x-text="$store.ui.user?.credits ?? '–'">–</p>
+        <p class="text-xs text-kraft-muted mt-0.5">Créditos</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="flex items-center gap-3 mb-6">
+    <div class="relative flex-1 max-w-xs">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-kraft-muted pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <input x-model="search" type="text" placeholder="Buscar projetos..."
+        class="w-full pl-9 pr-4 py-2 bg-kraft-surface border border-kraft-border rounded-lg text-sm text-kraft-text focus:outline-none focus:border-kraft-accent focus:ring-1 focus:ring-kraft-accent/30 transition-colors placeholder-kraft-muted" />
+    </div>
+
+    <select x-model="filterStatus"
+      class="bg-kraft-surface border border-kraft-border rounded-lg px-3 py-2 text-sm text-kraft-text focus:outline-none focus:border-kraft-accent transition-colors">
+      <option value="all">Todos</option>
+      <option value="built">Prontos</option>
+      <option value="ready">Gerados</option>
+      <option value="draft">Rascunho</option>
+      <option value="error">Com erro</option>
+    </select>
+
+    <div class="flex-1"></div>
+
+    <button @click="showNew = true"
+      class="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-violet-900/30">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Novo Jogo
+    </button>
+  </div>
+
+  <!-- Modal novo projeto -->
+  <div x-show="showNew" x-cloak
+    class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+    @click.self="showNew = false"
+    x-transition:enter="transition ease-out duration-150"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100">
+    <div class="bg-kraft-surface border border-kraft-border rounded-2xl p-6 w-full max-w-md shadow-2xl"
+      x-transition:enter="transition ease-out duration-150"
+      x-transition:enter-start="opacity-0 scale-95"
+      x-transition:enter-end="opacity-100 scale-100">
+      <h2 class="text-lg font-bold mb-5">Novo Projeto</h2>
+      <form @submit.prevent="createProject">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs text-kraft-muted mb-1.5">Nome do jogo *</label>
+            <input x-model="newProject.name" type="text" placeholder="Ex: Dungeon Crawler 2D" autofocus
+              class="w-full bg-kraft-bg border border-kraft-border rounded-xl px-4 py-2.5 text-sm text-kraft-text focus:outline-none focus:border-kraft-accent focus:ring-1 focus:ring-kraft-accent/30 transition-colors placeholder-kraft-muted" />
+          </div>
+          <div>
+            <label class="block text-xs text-kraft-muted mb-1.5">Gênero</label>
+            <input x-model="newProject.genre" type="text" placeholder="Ex: RPG, plataforma, puzzle..."
+              class="w-full bg-kraft-bg border border-kraft-border rounded-xl px-4 py-2.5 text-sm text-kraft-text focus:outline-none focus:border-kraft-accent focus:ring-1 focus:ring-kraft-accent/30 transition-colors placeholder-kraft-muted" />
+          </div>
+          <div>
+            <label class="block text-xs text-kraft-muted mb-1.5">Descrição rápida</label>
+            <textarea x-model="newProject.description" rows="3"
+              placeholder="Descreva sua ideia de jogo — quanto mais detalhes, melhor a IA vai entender..."
+              class="w-full bg-kraft-bg border border-kraft-border rounded-xl px-4 py-2.5 text-sm text-kraft-text focus:outline-none focus:border-kraft-accent focus:ring-1 focus:ring-kraft-accent/30 transition-colors placeholder-kraft-muted resize-none"></textarea>
+          </div>
+        </div>
+        <div class="flex gap-3 mt-6">
+          <button type="button" @click="showNew = false"
+            class="flex-1 border border-kraft-border rounded-xl py-2.5 text-sm text-kraft-muted hover:text-kraft-text hover:border-kraft-accent/50 transition-colors">
+            Cancelar
+          </button>
+          <button type="submit" :disabled="!newProject.name.trim()"
+            class="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 disabled:opacity-40 text-white rounded-xl py-2.5 text-sm font-medium transition-all">
+            Criar Projeto
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Grid de projetos -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <template x-for="project in filteredProjects" :key="project.id">
+      <div class="group relative bg-kraft-surface border border-kraft-border rounded-xl overflow-hidden hover:border-violet-500/40 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-violet-900/20">
+
+        <!-- Thumbnail placeholder -->
+        <div class="aspect-video bg-kraft-bg border-b border-kraft-border flex items-center justify-center relative overflow-hidden">
+          <span class="text-5xl font-bold opacity-[0.07] text-kraft-text select-none tracking-widest"
+            x-text="genreCode(project.genre)">
+          </span>
+          <!-- Active state overlay -->
+          <div x-show="['generating','building'].includes(project.status)"
+            class="absolute inset-0 bg-violet-600/5 flex items-center justify-center">
+            <div class="flex items-center gap-2 text-kraft-accent text-xs">
+              <div class="w-3 h-3 border border-kraft-accent border-t-transparent rounded-full animate-spin"></div>
+              <span x-text="project.status === 'generating' ? 'Gerando com IA...' : 'Compilando...'"></span>
+            </div>
+          </div>
+          <!-- Built state badge -->
+          <div x-show="project.status === 'built'"
+            class="absolute top-2 right-2 flex items-center gap-1 text-xs px-2 py-0.5 bg-green-500/20 border border-green-500/30 text-green-400 rounded-full">
+            <div class="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
+            Pronto
+          </div>
+        </div>
+
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-2.5">
+            <span class="text-xs px-2 py-0.5 rounded-full border"
+              :class="statusClass(project.status)"
+              x-text="statusLabel(project.status)">
+            </span>
+            <span class="text-xs text-kraft-muted" x-text="formatDate(project.updated_at)"></span>
+          </div>
+
+          <h3 class="font-bold text-kraft-text group-hover:text-violet-300 transition-colors"
+            x-text="project.name">
+          </h3>
+          <p class="text-xs text-kraft-muted mt-1 line-clamp-2"
+            x-text="project.description || 'Sem descrição'">
+          </p>
+
+          <div class="flex items-center gap-2 mt-3">
+            <span x-show="project.genre"
+              class="text-xs px-2 py-0.5 bg-kraft-border rounded-full text-kraft-muted"
+              x-text="project.genre">
+            </span>
+          </div>
+        </div>
+
+        <!-- Hover action bar -->
+        <div class="absolute bottom-0 left-0 right-0 pb-4 px-5 pt-10
+                    bg-gradient-to-t from-kraft-surface via-kraft-surface/95 to-transparent
+                    opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0
+                    transition-all duration-200">
+          <div class="flex gap-2">
+            <a :href="`/projects/${project.id}`"
+              class="flex-1 text-center text-xs bg-kraft-accent hover:bg-violet-500 text-white py-2 rounded-lg transition-colors font-medium">
+              Abrir
+            </a>
+            <a :href="`/projects/${project.id}/preview`"
+              class="flex-1 text-center text-xs border border-kraft-border hover:border-kraft-accent text-kraft-muted hover:text-kraft-text py-2 rounded-lg transition-colors">
+              Preview
+            </a>
+            <button @click.stop="deleteProject(project.id)"
+              class="px-3 text-xs border border-red-500/20 hover:border-red-500/40 hover:bg-red-500/10 text-red-400/50 hover:text-red-400 py-2 rounded-lg transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Empty state -->
+    <div x-show="filteredProjects.length === 0 && !loading" class="col-span-3 py-20 flex flex-col items-center">
+      <pre class="text-kraft-muted/[0.08] text-xs leading-tight mb-8 select-none font-mono text-center">
+██╗  ██╗██████╗  █████╗ ███████╗████████╗
+██║ ██╔╝██╔══██╗██╔══██╗██╔════╝╚══██╔══╝
+█████╔╝ ██████╔╝███████║█████╗     ██║
+██╔═██╗ ██╔══██╗██╔══██║██╔══╝     ██║
+██║  ██╗██║  ██║██║  ██║██║        ██║
+╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝        ╚═╝</pre>
+      <p class="text-kraft-text font-medium mb-1.5" x-text="search || filterStatus !== 'all' ? 'Nenhum projeto encontrado' : 'Nenhum projeto ainda'"></p>
+      <p class="text-kraft-muted text-sm mb-6" x-text="search || filterStatus !== 'all' ? 'Tente outros filtros.' : 'Crie seu primeiro jogo com IA em segundos.'"></p>
+      <button x-show="!search && filterStatus === 'all'" @click="showNew = true"
+        class="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-all shadow-lg shadow-violet-900/30">
+        Criar primeiro jogo
+      </button>
+    </div>
+
+    <!-- Loading state -->
+    <div x-show="loading" class="col-span-3 py-20 flex items-center justify-center">
+      <div class="w-6 h-6 border-2 border-kraft-accent border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+function dashboard() {
+  return {
+    projects: [],
+    showNew: false,
+    loading: true,
+    search: '',
+    filterStatus: 'all',
+    newProject: { name: '', genre: '', description: '' },
+    token: localStorage.getItem('kraft_token'),
+
+    get filteredProjects() {
+      return this.projects.filter(p => {
+        const q = this.search.toLowerCase()
+        const matchSearch = !q || p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q)
+        const matchStatus = this.filterStatus === 'all' || p.status === this.filterStatus
+        return matchSearch && matchStatus
+      })
+    },
+
+    get builtCount() {
+      return this.projects.filter(p => p.status === 'built').length
+    },
+
+    async init() {
+      await this.loadProjects()
+    },
+
+    async loadProjects() {
+      this.loading = true
+      const res = await kraftFetch('/api/projects')
+      if (res?.ok) this.projects = await res.json()
+      this.loading = false
+    },
+
+    async createProject() {
+      if (!this.newProject.name.trim()) return
+      const res = await kraftFetch('/api/projects', {
+        method: 'POST',
+        body: JSON.stringify(this.newProject),
+      })
+      if (res?.ok) {
+        const project = await res.json()
+        window.location.href = `/projects/${project.id}`
+      }
+    },
+
+    async deleteProject(id) {
+      if (!confirm('Excluir projeto permanentemente?')) return
+      const res = await kraftFetch(`/api/projects/${id}`, { method: 'DELETE' })
+      if (res && (res.ok || res.status === 204)) {
+        this.projects = this.projects.filter(p => p.id !== id)
+        Alpine.store('ui').addToast('Projeto excluído', 'success')
+      }
+    },
+
+    genreCode(genre) {
+      if (!genre) return '?'
+      const map = { rpg:'RPG', plataforma:'PLT', puzzle:'PZL', ação:'ACT', aventura:'ADV', estratégia:'STR', horror:'HRR', corrida:'RCE' }
+      return map[genre.toLowerCase()] || genre.slice(0,3).toUpperCase()
+    },
+
+    statusLabel(s) {
+      return { draft:'Rascunho', generating:'Gerando', ready:'Pronto', building:'Build', built:'Publicado', error:'Erro' }[s] || s
+    },
+
+    statusClass(s) {
+      return {
+        built: 'border-green-500/30 text-green-400 bg-green-500/10',
+        generating: 'border-yellow-500/30 text-yellow-400 bg-yellow-500/10',
+        building: 'border-yellow-500/30 text-yellow-400 bg-yellow-500/10',
+        ready: 'border-blue-500/30 text-blue-400 bg-blue-500/10',
+        draft: 'border-kraft-border text-kraft-muted',
+        error: 'border-red-500/30 text-red-400 bg-red-500/10',
+      }[s] || 'border-kraft-border text-kraft-muted'
+    },
+
+    formatDate(iso) {
+      return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    },
+  }
+}
+</script>
+{% endblock %}
+{% endblock %}

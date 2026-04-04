@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pt-BR" x-data="basePage()" x-init="init()">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Kraft{% endblock %} — Game Creation OS</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            kraft: { bg:'#0d0d0f', surface:'#18181c', border:'#2a2a30', accent:'#7c3aed', accent2:'#a855f7', text:'#e2e2e8', muted:'#6b6b78' }
+          },
+          fontFamily: { mono: ['JetBrains Mono','Fira Code','monospace'] }
+        }
+      }
+    }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+  <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+
+  <style>
+    [x-cloak] { display: none !important; }
+    body { background-color: #0d0d0f; color: #e2e2e8; font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #0d0d0f; }
+    ::-webkit-scrollbar-thumb { background: #2a2a30; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3a42; }
+  </style>
+
+  {% block head %}{% endblock %}
+</head>
+<body class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside
+    class="flex flex-col border-r border-kraft-border bg-kraft-surface transition-all duration-200 shrink-0"
+    :class="sidebarOpen ? 'w-56' : 'w-14'"
+  >
+    <!-- Logo -->
+    <div class="flex items-center gap-3 px-4 py-5 border-b border-kraft-border">
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-purple-900 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-lg shadow-violet-900/40">K</div>
+      <span class="font-bold text-kraft-text text-base tracking-tight" x-show="sidebarOpen" x-cloak>Kraft</span>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 p-2.5 space-y-0.5">
+      <a href="/"
+        class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors"
+        :class="isActive('/') ? 'bg-kraft-accent/10 text-kraft-accent border border-kraft-accent/20' : 'text-kraft-muted hover:bg-kraft-border hover:text-kraft-text'">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+        </svg>
+        <span x-show="sidebarOpen" x-cloak>Projetos</span>
+      </a>
+
+      <a href="/marketplace"
+        class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors"
+        :class="isActive('/marketplace') ? 'bg-kraft-accent/10 text-kraft-accent border border-kraft-accent/20' : 'text-kraft-muted hover:bg-kraft-border hover:text-kraft-text'">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+        </svg>
+        <span x-show="sidebarOpen" x-cloak>Loja</span>
+      </a>
+    </nav>
+
+    <!-- User profile pill -->
+    <div x-show="$store.ui.user" x-cloak class="mx-2.5 mb-2">
+      <div class="bg-kraft-bg border border-kraft-border rounded-xl p-3">
+        <div x-show="sidebarOpen" class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-purple-800 flex items-center justify-center text-white text-xs font-bold shrink-0"
+            x-text="($store.ui.user?.username || 'U').slice(0,2).toUpperCase()">
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-medium text-kraft-text truncate" x-text="$store.ui.user?.username"></p>
+            <span class="text-xs px-1.5 py-0.5 rounded-full border"
+              :class="{
+                'border-violet-500/40 text-violet-400 bg-violet-500/10': ['pro','studio'].includes($store.ui.user?.plan),
+                'border-kraft-border text-kraft-muted': ['free','starter'].includes($store.ui.user?.plan)
+              }"
+              x-text="$store.ui.user?.plan">
+            </span>
+          </div>
+        </div>
+        <div x-show="!sidebarOpen" class="flex justify-center">
+          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-purple-800 flex items-center justify-center text-white text-xs font-bold"
+            x-text="($store.ui.user?.username || 'U').slice(0,2).toUpperCase()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Credit bar -->
+      <div x-show="sidebarOpen && $store.ui.user" x-cloak class="mt-1.5 px-3 py-2 bg-kraft-bg border border-kraft-border rounded-xl">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-xs text-kraft-muted">Créditos</span>
+          <span class="text-xs font-medium text-kraft-accent" x-text="$store.ui.user?.credits ?? 0"></span>
+        </div>
+        <div class="h-1 bg-kraft-border rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-violet-600 to-purple-400 rounded-full transition-all"
+            :style="`width: ${Math.min(($store.ui.user?.credits ?? 0), 100)}%`">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logout -->
+    <button @click="logout()"
+      class="flex items-center gap-3 mx-2.5 mb-2 px-3 py-2 rounded-lg text-kraft-muted hover:bg-red-500/10 hover:text-red-400 transition-colors text-sm">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+      </svg>
+      <span x-show="sidebarOpen" x-cloak>Sair</span>
+    </button>
+
+    <!-- Toggle + version -->
+    <div class="border-t border-kraft-border">
+      <button @click="sidebarOpen = !sidebarOpen"
+        class="w-full flex items-center gap-2 px-4 py-3 text-kraft-muted hover:text-kraft-text transition-colors text-xs">
+        <svg class="w-3.5 h-3.5 shrink-0 transition-transform" :class="sidebarOpen ? '' : 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+        </svg>
+        <span x-show="sidebarOpen" x-cloak class="opacity-40">v0.1.0</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="flex-1 overflow-auto min-w-0">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Toast system -->
+  <div class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none" x-data>
+    <template x-for="toast in $store.ui.toasts" :key="toast.id">
+      <div class="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium shadow-2xl max-w-sm"
+        :class="{
+          'bg-green-500/10 border-green-500/30 text-green-400': toast.type === 'success',
+          'bg-red-500/10 border-red-500/30 text-red-400': toast.type === 'error',
+          'bg-kraft-surface border-kraft-border text-kraft-text': toast.type === 'info',
+        }"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-end="opacity-0 scale-95"
+        x-text="toast.msg">
+      </div>
+    </template>
+  </div>
+
+  <script>
+    // ─── Alpine Store global ──────────────────────────────────────────────────
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('ui', {
+        user: null,
+        toasts: [],
+        addToast(msg, type = 'info') {
+          const id = Date.now()
+          this.toasts.push({ id, msg, type })
+          setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id) }, 4000)
+        }
+      })
+    })
+
+    // ─── Helper global de fetch autenticado ──────────────────────────────────
+    window.kraftFetch = async (url, options = {}) => {
+      const token = localStorage.getItem('kraft_token')
+      const res = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(options.headers || {}),
+        },
+      })
+      if (res.status === 401) {
+        localStorage.removeItem('kraft_token')
+        window.location.href = '/login'
+        return null
+      }
+      return res
+    }
+
+    // ─── Componente base (auth guard + sidebar) ───────────────────────────────
+    function basePage() {
+      return {
+        sidebarOpen: true,
+
+        async init() {
+          const token = localStorage.getItem('kraft_token')
+          if (!token) { window.location.href = '/login'; return }
+
+          const res = await fetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          if (!res.ok) {
+            localStorage.removeItem('kraft_token')
+            window.location.href = '/login'
+            return
+          }
+          Alpine.store('ui').user = await res.json()
+        },
+
+        logout() {
+          if (!confirm('Sair do Kraft?')) return
+          localStorage.removeItem('kraft_token')
+          window.location.href = '/login'
+        },
+
+        isActive(path) {
+          if (path === '/') return window.location.pathname === '/'
+          return window.location.pathname.startsWith(path)
+        }
+      }
+    }
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,105 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kraft
+      POSTGRES_PASSWORD: kraft
+      POSTGRES_DB: kraft
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kraft"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - projects_workdir:/tmp/kraft_projects
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://kraft:kraft@db:5432/kraft
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker-codegen:
+    build: .
+    command: python -m dramatiq app.workers.codegen_worker
+    volumes:
+      - .:/app
+      - projects_workdir:/tmp/kraft_projects
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://kraft:kraft@db:5432/kraft
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker-pixel:
+    build: .
+    command: python -m dramatiq app.workers.pixel_worker
+    volumes:
+      - .:/app
+      - projects_workdir:/tmp/kraft_projects
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://kraft:kraft@db:5432/kraft
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker-build:
+    build: .
+    command: python -m dramatiq app.workers.build_worker
+    volumes:
+      - .:/app
+      - projects_workdir:/tmp/kraft_projects
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://kraft:kraft@db:5432/kraft
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  projects_workdir:
