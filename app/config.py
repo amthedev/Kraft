@@ -44,9 +44,33 @@ class Settings(BaseSettings):
     # Marketplace
     platform_commission_percent: int = 15
 
+    # SSL / Mutual TLS (SquareCloud ou qualquer Postgres que exija cert de cliente)
+    # Aponte para os arquivos baixados do painel do provedor:
+    #   DB_SSL_CERT=/caminho/para/client.crt
+    #   DB_SSL_KEY=/caminho/para/client.key
+    #   DB_SSL_CA=/caminho/para/ca.crt
+    db_ssl_cert: str = ""   # client certificate (.crt)
+    db_ssl_key: str = ""    # client private key (.key)
+    db_ssl_ca: str = ""     # CA certificate (.crt) — para verify-full
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def ssl_context(self):
+        """Retorna ssl.SSLContext configurado se certificados foram fornecidos, senão None."""
+        if not (self.db_ssl_cert and self.db_ssl_key):
+            return None
+        import ssl
+        ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        ctx.load_cert_chain(certfile=self.db_ssl_cert, keyfile=self.db_ssl_key)
+        if self.db_ssl_ca:
+            ctx.load_verify_locations(cafile=self.db_ssl_ca)
+        else:
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+        return ctx
 
 
 settings = Settings()
