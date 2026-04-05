@@ -7,7 +7,7 @@ envia para Claude, interpreta a resposta e enfileira os workers corretos.
 
 import json
 
-import anthropic
+import openai
 
 from app.config import settings
 from app.models.project import MessageRole, Project, ProjectMessage
@@ -36,8 +36,8 @@ Regras:
 
 
 async def orchestrate(project: Project, user_message: str, db) -> None:
-    """Envia contexto para Claude e enfileira workers conforme as ações retornadas."""
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    """Envia contexto para OpenAI e enfileira workers conforme as ações retornadas."""
+    client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
 
     # Monta histórico de contexto (últimas 10 mensagens)
     from sqlalchemy import select
@@ -69,14 +69,13 @@ async def orchestrate(project: Project, user_message: str, db) -> None:
 
     full_system = f"{SYSTEM_PROMPT}\n\nEstado atual do projeto:\n{project_context}"
 
-    response = await client.messages.create(
-        model="claude-opus-4-6",
+    response = await client.chat.completions.create(
+        model="gpt-4o",
         max_tokens=4096,
-        system=full_system,
-        messages=messages,
+        messages=[{"role": "system", "content": full_system}, *messages],
     )
 
-    raw = response.content[0].text
+    raw = response.choices[0].message.content
 
     # Tenta extrair JSON da resposta
     try:

@@ -12,8 +12,8 @@ import io
 import json
 from pathlib import Path
 
-import anthropic
 import httpx
+import openai
 from PIL import Image
 
 from app.config import settings
@@ -38,19 +38,21 @@ Retorne JSON:
 
 
 async def plan_pixel_asset(asset_description: str, art_bible: dict | None) -> dict:
-    """Usa Claude para planejar o asset antes de gerar."""
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    """Usa OpenAI para planejar o asset antes de gerar."""
+    client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
 
     context = f"Art Bible: {json.dumps(art_bible or {})}\n\nAsset: {asset_description}"
 
-    response = await client.messages.create(
-        model="claude-opus-4-6",
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
         max_tokens=1024,
-        system=PIXEL_SYSTEM,
-        messages=[{"role": "user", "content": context}],
+        messages=[
+            {"role": "system", "content": PIXEL_SYSTEM},
+            {"role": "user", "content": context},
+        ],
     )
 
-    raw = response.content[0].text
+    raw = response.choices[0].message.content
     try:
         if "```json" in raw:
             raw = raw.split("```json")[1].split("```")[0].strip()

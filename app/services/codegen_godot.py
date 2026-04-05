@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 
-import anthropic
+import openai
 
 from app.config import settings
 
@@ -36,7 +36,7 @@ Regras críticas:
 
 async def generate_godot_project(project_id: int, gameplay_graph: dict, scene_graph: dict | None) -> dict[str, str]:
     """Gera todos os arquivos do projeto Godot e retorna dict {path: conteúdo}."""
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
 
     context = json.dumps(
         {"gameplay_graph": gameplay_graph, "scene_graph": scene_graph},
@@ -44,14 +44,16 @@ async def generate_godot_project(project_id: int, gameplay_graph: dict, scene_gr
         indent=2,
     )
 
-    response = await client.messages.create(
-        model="claude-opus-4-6",
+    response = await client.chat.completions.create(
+        model="gpt-4o",
         max_tokens=8192,
-        system=CODEGEN_SYSTEM,
-        messages=[{"role": "user", "content": f"Gere o projeto Godot para:\n{context}"}],
+        messages=[
+            {"role": "system", "content": CODEGEN_SYSTEM},
+            {"role": "user", "content": f"Gere o projeto Godot para:\n{context}"},
+        ],
     )
 
-    raw = response.content[0].text
+    raw = response.choices[0].message.content
     try:
         if "```json" in raw:
             raw = raw.split("```json")[1].split("```")[0].strip()

@@ -14,7 +14,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-import anthropic
+import openai
 
 from app.config import settings
 from app.services.storage import upload_asset
@@ -33,17 +33,19 @@ Retorne apenas o código Python, sem explicações.
 
 
 async def generate_blender_script(asset_description: str, style: str = "low-poly game asset") -> str:
-    """Usa Claude para gerar o script Python do Blender."""
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    """Usa OpenAI para gerar o script Python do Blender."""
+    client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
 
-    response = await client.messages.create(
-        model="claude-opus-4-6",
+    response = await client.chat.completions.create(
+        model="gpt-4o",
         max_tokens=4096,
-        system=BLENDER_SYSTEM,
-        messages=[{"role": "user", "content": f"Crie: {asset_description}\nEstilo: {style}"}],
+        messages=[
+            {"role": "system", "content": BLENDER_SYSTEM},
+            {"role": "user", "content": f"Crie: {asset_description}\nEstilo: {style}"},
+        ],
     )
 
-    raw = response.content[0].text
+    raw = response.choices[0].message.content
     # Remove markdown se presente
     if "```python" in raw:
         raw = raw.split("```python")[1].split("```")[0].strip()

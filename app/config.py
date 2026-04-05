@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 10080  # 7 dias
 
     # IA
-    anthropic_api_key: str = ""
+    openai_api_key: str = ""
 
     # Storage
     storage_endpoint_url: str = ""
