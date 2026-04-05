@@ -45,7 +45,7 @@ async def generate_godot_project(project_id: int, gameplay_graph: dict, scene_gr
     )
 
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4.1",
         max_tokens=8192,
         messages=[
             {"role": "system", "content": CODEGEN_SYSTEM},

@@ -44,7 +44,7 @@ async def plan_pixel_asset(asset_description: str, art_bible: dict | None) -> di
     context = f"Art Bible: {json.dumps(art_bible or {})}\n\nAsset: {asset_description}"
 
     response = await client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4.1-mini",
         max_tokens=1024,
         messages=[
             {"role": "system", "content": PIXEL_SYSTEM},

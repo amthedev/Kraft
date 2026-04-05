@@ -70,7 +70,7 @@ async def orchestrate(project: Project, user_message: str, db) -> None:
     full_system = f"{SYSTEM_PROMPT}\n\nEstado atual do projeto:\n{project_context}"
 
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4.1",
         max_tokens=4096,
         messages=[{"role": "system", "content": full_system}, *messages],
     )
