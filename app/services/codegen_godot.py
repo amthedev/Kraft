@@ -197,6 +197,20 @@ async def generate_godot_project(
     return all_files
 
 
+MAIN_SCENE_CONTENT = """\
+[gd_scene load_steps=2 format=3 uid="uid://main"]
+
+[ext_resource type="Script" path="res://autoload/GameManager.gd" id="1"]
+
+[node name="Main" type="Node"]
+
+[node name="WorldLoader" type="Node" parent="."]
+script = ExtResource("1")
+"""
+
+MAIN_SCENE_PATH = "main.tscn"
+
+
 def write_project_files(project_id: int, files: dict[str, str]) -> Path:
     """Salva os arquivos gerados no diretório de trabalho."""
     project_dir = Path(settings.projects_workdir) / str(project_id) / "godot"
@@ -207,4 +221,46 @@ def write_project_files(project_id: int, files: dict[str, str]) -> Path:
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_text(content, encoding="utf-8")
 
+    _ensure_main_scene(project_dir)
     return project_dir
+
+
+def _ensure_main_scene(project_dir: Path) -> None:
+    """Garante que o projeto tem uma main scene válida no project.godot."""
+    # Encontra a melhor cena candidata a main
+    candidates = [
+        "main.tscn", "Main.tscn",
+        "world/WorldMap.tscn",
+        "player/Player.tscn",
+    ]
+    main_scene = None
+    for c in candidates:
+        if (project_dir / c).exists():
+            main_scene = c
+            break
+
+    # Se não existe nenhuma, cria main.tscn mínima
+    if not main_scene:
+        main_path = project_dir / MAIN_SCENE_PATH
+        main_path.write_text(MAIN_SCENE_CONTENT, encoding="utf-8")
+        main_scene = MAIN_SCENE_PATH
+
+    # Atualiza project.godot com run/main_scene
+    project_cfg = project_dir / "project.godot"
+    if project_cfg.exists():
+        content = project_cfg.read_text(encoding="utf-8")
+        # Remove entrada existente se houver
+        lines = [l for l in content.splitlines() if "run/main_scene" not in l]
+        # Insere após [application]
+        result = []
+        for line in lines:
+            result.append(line)
+            if line.strip() == "[application]":
+                result.append(f'run/main_scene="res://{main_scene}"')
+        project_cfg.write_text("\n".join(result) + "\n", encoding="utf-8")
+    else:
+        # Cria project.godot mínimo
+        project_cfg.write_text(
+            f'config_version=5\n\n[application]\nrun/main_scene="res://{main_scene}"\n',
+            encoding="utf-8",
+        )
