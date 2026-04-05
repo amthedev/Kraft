@@ -71,8 +71,6 @@ async def generate_blender_script(
     style: str = "low_poly",
 ) -> str:
     """Usa GPT-4.1 para gerar o script Python do Blender."""
-    client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
-
     # Escolhe prompt baseado no tipo de asset
     system = ENVIRONMENT_SYSTEM if asset_type in ("environment", "terrain", "region") else BLENDER_SYSTEM
 
@@ -97,14 +95,15 @@ async def generate_blender_script(
         f"Gere o script Python completo para Blender 4.x."
     )
 
-    response = await client.chat.completions.create(
-        model="gpt-4.1",
-        max_tokens=8192,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user_msg},
-        ],
-    )
+    async with openai.AsyncOpenAI(api_key=settings.openai_api_key) as client:
+        response = await client.chat.completions.create(
+            model="gpt-4.1",
+            max_tokens=8192,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_msg},
+            ],
+        )
 
     raw = response.choices[0].message.content or ""
     # Remove markdown se o modelo incluir mesmo com instrução

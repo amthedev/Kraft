@@ -197,8 +197,6 @@ REGRAS CRÍTICAS:
 
 async def orchestrate(project: Project, user_message: str, db) -> None:
     """Envia contexto completo para OpenAI e enfileira workers conforme as ações retornadas."""
-    client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
-
     # Monta histórico de contexto (últimas 20 mensagens — mais contexto para jogos complexos)
     from sqlalchemy import select
     result = await db.execute(
@@ -235,12 +233,13 @@ async def orchestrate(project: Project, user_message: str, db) -> None:
 
     full_system = f"{SYSTEM_PROMPT}\n\nEstado atual do projeto:\n{project_context}"
 
-    response = await client.chat.completions.create(
-        model="gpt-4.1",
-        max_tokens=16000,   # máximo para jogos complexos
-        messages=[{"role": "system", "content": full_system}, *messages],
-        response_format={"type": "json_object"},  # força JSON válido
-    )
+    async with openai.AsyncOpenAI(api_key=settings.openai_api_key) as client:
+        response = await client.chat.completions.create(
+            model="gpt-4.1",
+            max_tokens=16000,   # máximo para jogos complexos
+            messages=[{"role": "system", "content": full_system}, *messages],
+            response_format={"type": "json_object"},  # força JSON válido
+        )
 
     raw = response.choices[0].message.content
 

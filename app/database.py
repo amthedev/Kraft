@@ -23,6 +23,21 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
+def make_session_factory():
+    """Cria um engine + session factory novos — necessário dentro de workers
+    que rodam asyncio.run() em threads separadas (cada chamada cria seu próprio loop)."""
+    _ca = {}
+    if settings.ssl_context is not None:
+        _ca["ssl"] = settings.ssl_context
+    _engine = create_async_engine(
+        settings.database_url,
+        echo=False,
+        pool_pre_ping=True,
+        connect_args=_ca,
+    )
+    return async_sessionmaker(bind=_engine, expire_on_commit=False, class_=AsyncSession)
+
+
 class Base(DeclarativeBase):
     pass
 

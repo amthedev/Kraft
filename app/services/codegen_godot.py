@@ -132,7 +132,6 @@ async def generate_godot_project(
     art_bible: dict | None = None,
 ) -> dict[str, str]:
     """Gera todos os arquivos do projeto Godot em 7 módulos sequenciais."""
-    client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
     all_files: dict[str, str] = {}
 
     # Contextos por módulo — cada um recebe apenas o que é relevante
@@ -170,29 +169,30 @@ async def generate_godot_project(
         },
     }
 
-    for module_name, context in module_contexts.items():
-        context_str = json.dumps(context, ensure_ascii=False, indent=2)
-        user_msg = f"Contexto do projeto:\n{context_str}\n\nGere o módulo '{module_name}'."
+    async with openai.AsyncOpenAI(api_key=settings.openai_api_key) as client:
+        for module_name, context in module_contexts.items():
+            context_str = json.dumps(context, ensure_ascii=False, indent=2)
+            user_msg = f"Contexto do projeto:\n{context_str}\n\nGere o módulo '{module_name}'."
 
-        try:
-            response = await client.chat.completions.create(
-                model="gpt-4.1",
-                max_tokens=8192,
-                messages=[
-                    {"role": "system", "content": _MODULE_PROMPTS[module_name]},
-                    {"role": "user", "content": user_msg},
-                ],
-                response_format={"type": "json_object"},
-            )
+            try:
+                response = await client.chat.completions.create(
+                    model="gpt-4.1",
+                    max_tokens=8192,
+                    messages=[
+                        {"role": "system", "content": _MODULE_PROMPTS[module_name]},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    response_format={"type": "json_object"},
+                )
 
-            raw = response.choices[0].message.content
-            data = json.loads(raw)
-            module_files = data.get("files", {})
-            all_files.update(module_files)
+                raw = response.choices[0].message.content
+                data = json.loads(raw)
+                module_files = data.get("files", {})
+                all_files.update(module_files)
 
-        except Exception:
-            # Módulo falhou — continua com os demais
-            pass
+            except Exception:
+                # Módulo falhou — continua com os demais
+                pass
 
     return all_files
 

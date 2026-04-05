@@ -5,7 +5,7 @@ import asyncio
 import dramatiq
 from sqlalchemy import select
 
-from app.database import AsyncSessionLocal
+from app.database import make_session_factory
 from app.models.project import Project, ProjectStatus
 from app.services.codegen_godot import generate_godot_project, write_project_files
 from app.workers import broker  # noqa: F401 — inicializa broker
@@ -17,7 +17,7 @@ def run_codegen(project_id: int) -> None:
 
 
 async def _run_codegen(project_id: int) -> None:
-    async with AsyncSessionLocal() as db:
+    async with make_session_factory()() as db:
         result = await db.execute(select(Project).where(Project.id == project_id))
         project = result.scalar_one_or_none()
         if not project:

@@ -51,19 +51,18 @@ Regras para o prompt DALL-E:
 
 async def plan_pixel_asset(asset_description: str, art_bible: dict | None) -> dict:
     """Planeja especificações do asset com GPT-4.1-mini."""
-    client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
-
     context = f"Art Bible: {json.dumps(art_bible or {})}\n\nAsset: {asset_description}"
 
-    response = await client.chat.completions.create(
-        model="gpt-4.1-mini",
-        max_tokens=1024,
-        messages=[
-            {"role": "system", "content": PIXEL_SYSTEM},
-            {"role": "user", "content": context},
-        ],
-        response_format={"type": "json_object"},
-    )
+    async with openai.AsyncOpenAI(api_key=settings.openai_api_key) as client:
+        response = await client.chat.completions.create(
+            model="gpt-4.1-mini",
+            max_tokens=1024,
+            messages=[
+                {"role": "system", "content": PIXEL_SYSTEM},
+                {"role": "user", "content": context},
+            ],
+            response_format={"type": "json_object"},
+        )
 
     try:
         return json.loads(response.choices[0].message.content)
@@ -81,20 +80,19 @@ async def plan_pixel_asset(asset_description: str, art_bible: dict | None) -> di
 
 async def generate_pixel_image(prompt: str, size: str = "1024x1024") -> bytes | None:
     """Gera imagem real com DALL-E 3 e retorna bytes PNG."""
-    client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
-
     # DALL-E 3 aceita: 1024x1024, 1792x1024, 1024x1792
     valid_sizes = {"1024x1024", "1792x1024", "1024x1792"}
     dall_e_size = size if size in valid_sizes else "1024x1024"
 
-    response = await client.images.generate(
-        model="dall-e-3",
-        prompt=prompt,
-        size=dall_e_size,
-        quality="hd",
-        style="vivid",
-        n=1,
-    )
+    async with openai.AsyncOpenAI(api_key=settings.openai_api_key) as client:
+        response = await client.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            size=dall_e_size,
+            quality="hd",
+            style="vivid",
+            n=1,
+        )
 
     image_url = response.data[0].url
     async with httpx.AsyncClient(timeout=60) as http:

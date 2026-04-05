@@ -5,7 +5,7 @@ import asyncio
 import dramatiq
 from sqlalchemy import select
 
-from app.database import AsyncSessionLocal
+from app.database import make_session_factory
 from app.models.asset import Asset, AssetType
 from app.models.project import Project
 from app.services.blender_fabricator import fabricate_3d_asset
@@ -18,7 +18,7 @@ def run_blender(project_id: int) -> None:
 
 
 async def _run_blender(project_id: int) -> None:
-    async with AsyncSessionLocal() as db:
+    async with make_session_factory()() as db:
         result = await db.execute(select(Project).where(Project.id == project_id))
         project = result.scalar_one_or_none()
         if not project:

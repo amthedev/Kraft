@@ -5,7 +5,7 @@ import asyncio
 import dramatiq
 from sqlalchemy import select
 
-from app.database import AsyncSessionLocal
+from app.database import make_session_factory
 from app.models.build import BuildStatus, ProjectBuild
 from app.models.project import Project, ProjectStatus
 from app.services.build_runner import build_and_upload
@@ -18,7 +18,7 @@ def run_build(build_id: int) -> None:
 
 
 async def _run_build(build_id: int) -> None:
-    async with AsyncSessionLocal() as db:
+    async with make_session_factory()() as db:
         result = await db.execute(select(ProjectBuild).where(ProjectBuild.id == build_id))
         build = result.scalar_one_or_none()
         if not build:

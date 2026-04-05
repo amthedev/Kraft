@@ -21,6 +21,12 @@ build/
 # Storage local
 /static/uploads/
 
+# Certificates (sensitive — never commit)
+certs/*.pem
+certs/*.key
+certs/*.crt
+certs/*.p12
+
 # IDE
 .vscode/
 .idea/
