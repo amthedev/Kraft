@@ -32,6 +32,11 @@ static_dir = Path(__file__).parent.parent / "static"
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
+# Uploads locais (fallback quando S3 não está configurado)
+uploads_dir = Path(settings.projects_workdir) / "_uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 # API routers

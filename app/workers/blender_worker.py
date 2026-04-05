@@ -32,14 +32,16 @@ async def _run_blender(project_id: int) -> None:
             description = model_def.get("description", name)
 
             try:
-                url = await fabricate_3d_asset(project_id, name, description)
+                asset_type = model_def.get("type", "prop")
+                style = model_def.get("style", "low_poly")
+                url = await fabricate_3d_asset(project_id, name, description, asset_type=asset_type, style=style)
                 if url:
                     asset = Asset(
                         project_id=project_id,
                         type=AssetType.model,
                         name=name,
                         url=url,
-                        meta={"source": "blender", "format": "glb"},
+                        meta={"source": "blender", "format": "glb", "asset_type": asset_type, "style": style},
                     )
                     db.add(asset)
             except Exception as e:

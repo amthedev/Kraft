@@ -280,7 +280,6 @@ def _dispatch_workers(project_id: int, actions: list[str]) -> None:
     from app.workers.codegen_worker import run_codegen
     from app.workers.pixel_worker import run_pixel
     from app.workers.blender_worker import run_blender
-    from app.workers.build_worker import run_build
 
     if "codegen" in actions:
         run_codegen.send(project_id)
@@ -288,5 +287,4 @@ def _dispatch_workers(project_id: int, actions: list[str]) -> None:
         run_pixel.send(project_id)
     if "blender" in actions:
         run_blender.send(project_id)
-    if "build" in actions:
-        run_build.send(project_id)
+    # "build" não é disparado aqui — requer criar ProjectBuild primeiro via REST API

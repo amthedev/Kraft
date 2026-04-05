@@ -1,6 +1,7 @@
+import asyncio
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +37,7 @@ async def get_messages(
 async def send_message(
     project_id: int,
     data: MessageCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -50,8 +52,15 @@ async def send_message(
     await db.commit()
     await db.refresh(user_msg)
 
-    # Dispara orquestração em background (enfileira workers)
-    await orchestrate(project, data.content, db)
+    # Dispara orquestração em background — retorna imediatamente ao cliente
+    async def _run():
+        async with AsyncSessionLocal() as bg_db:
+            result = await bg_db.execute(select(Project).where(Project.id == project_id))
+            bg_project = result.scalar_one_or_none()
+            if bg_project:
+                await orchestrate(bg_project, data.content, bg_db)
+
+    background_tasks.add_task(_run)
 
     return user_msg
 
@@ -85,7 +94,7 @@ async def chat_ws(project_id: int, websocket: WebSocket, token: str = Query(defa
                 db.add(user_msg)
                 await db.commit()
 
-                await orchestrate(project, content, db)
+                asyncio.create_task(orchestrate(project, content, db))
                 await websocket.send_json({"status": "queued", "message_id": user_msg.id})
 
     except WebSocketDisconnect:
