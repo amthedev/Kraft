@@ -30,6 +30,10 @@ class ProjectOut(BaseModel):
     art_bible: dict | None
     narrative_graph: dict | None
     economy_graph: dict | None
+    world_graph: dict | None
+    character_graph: dict | None
+    quest_graph: dict | None
+    dialogue_graph: dict | None
     created_at: datetime
     updated_at: datetime
 

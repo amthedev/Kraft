@@ -40,6 +40,12 @@ class Project(Base):
     narrative_graph: Mapped[dict | None] = mapped_column(JSONB)
     economy_graph: Mapped[dict | None] = mapped_column(JSONB)
 
+    # IR estendido — mundos massivos
+    world_graph: Mapped[dict | None] = mapped_column(JSONB)       # regiões, biomas, clima, pontos de interesse
+    character_graph: Mapped[dict | None] = mapped_column(JSONB)   # todos os NPCs, facções, rotinas, stats
+    quest_graph: Mapped[dict | None] = mapped_column(JSONB)       # missões, objetivos, recompensas, cadeia de quests
+    dialogue_graph: Mapped[dict | None] = mapped_column(JSONB)    # árvores de diálogo por personagem
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

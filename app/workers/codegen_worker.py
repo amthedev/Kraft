@@ -31,6 +31,11 @@ async def _run_codegen(project_id: int) -> None:
                 project_id,
                 project.gameplay_graph or {},
                 project.scene_graph,
+                world_graph=project.world_graph,
+                character_graph=project.character_graph,
+                quest_graph=project.quest_graph,
+                dialogue_graph=project.dialogue_graph,
+                art_bible=project.art_bible,
             )
 
             if files:
