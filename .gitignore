@@ -12,9 +12,8 @@ build/
 .ruff_cache/
 .pytest_cache/
 
-# Alembic
-migrations/versions/*.py
-!migrations/versions/.gitkeep
+# Alembic (migrations são versionadas)
+# migrations/versions/*.py
 
 # Projetos gerados
 /tmp/kraft_projects/
