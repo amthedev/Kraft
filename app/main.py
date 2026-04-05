@@ -47,32 +47,32 @@ app.include_router(marketplace.router)
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse(request, "dashboard.html")
 
 
 @app.get("/projects/{project_id}", response_class=HTMLResponse)
 async def project_page(request: Request, project_id: int):
-    return templates.TemplateResponse("project.html", {"request": request, "project_id": project_id})
+    return templates.TemplateResponse(request, "project.html", {"project_id": project_id})
 
 
 @app.get("/projects/{project_id}/preview", response_class=HTMLResponse)
 async def preview_page(request: Request, project_id: int):
-    return templates.TemplateResponse("preview.html", {"request": request, "project_id": project_id})
+    return templates.TemplateResponse(request, "preview.html", {"project_id": project_id})
 
 
 @app.get("/marketplace", response_class=HTMLResponse)
 async def marketplace_page(request: Request):
-    return templates.TemplateResponse("marketplace.html", {"request": request})
+    return templates.TemplateResponse(request, "marketplace.html")
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("auth.html", {"request": request, "tab": "login"})
+    return templates.TemplateResponse(request, "auth.html", {"tab": "login"})
 
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
-    return templates.TemplateResponse("auth.html", {"request": request, "tab": "register"})
+    return templates.TemplateResponse(request, "auth.html", {"tab": "register"})
 
 
 @app.get("/health")
