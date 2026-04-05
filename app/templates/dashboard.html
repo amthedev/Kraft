@@ -87,6 +87,21 @@
               class="w-full bg-kraft-bg border border-kraft-border rounded-xl px-4 py-2.5 text-sm text-kraft-text focus:outline-none focus:border-kraft-accent focus:ring-1 focus:ring-kraft-accent/30 transition-colors placeholder-kraft-muted" />
           </div>
           <div>
+            <label class="block text-xs text-kraft-muted mb-1.5">Tipo de Jogo</label>
+            <div class="flex gap-2">
+              <button type="button" @click="newProject.dimension='2d'"
+                :class="newProject.dimension==='2d' ? 'bg-purple-600 text-white border-purple-500' : 'bg-kraft-bg text-kraft-muted border-kraft-border hover:border-purple-500/50'"
+                class="flex-1 flex items-center justify-center gap-2 border rounded-xl py-2.5 text-sm font-medium transition-all">
+                <span>🎮</span> 2D Pixel Art
+              </button>
+              <button type="button" @click="newProject.dimension='3d'"
+                :class="newProject.dimension==='3d' ? 'bg-blue-600 text-white border-blue-500' : 'bg-kraft-bg text-kraft-muted border-kraft-border hover:border-blue-500/50'"
+                class="flex-1 flex items-center justify-center gap-2 border rounded-xl py-2.5 text-sm font-medium transition-all">
+                <span>🌍</span> 3D Open World
+              </button>
+            </div>
+          </div>
+          <div>
             <label class="block text-xs text-kraft-muted mb-1.5">Descrição rápida</label>
             <textarea x-model="newProject.description" rows="3"
               placeholder="Descreva sua ideia de jogo — quanto mais detalhes, melhor a IA vai entender..."
@@ -154,6 +169,11 @@
               class="text-xs px-2 py-0.5 bg-kraft-border rounded-full text-kraft-muted"
               x-text="project.genre">
             </span>
+            <span
+              :class="project.dimension==='2d' ? 'bg-purple-900/40 text-purple-300' : 'bg-blue-900/40 text-blue-300'"
+              class="text-xs px-2 py-0.5 rounded-full"
+              x-text="project.dimension==='2d' ? '2D Pixel Art' : '3D Open World'">
+            </span>
           </div>
         </div>
 
@@ -216,7 +236,7 @@ function dashboard() {
     loading: true,
     search: '',
     filterStatus: 'all',
-    newProject: { name: '', genre: '', description: '' },
+    newProject: { name: '', genre: '', description: '', dimension: '3d' },
     token: localStorage.getItem('kraft_token'),
 
     get filteredProjects() {

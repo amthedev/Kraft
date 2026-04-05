@@ -9,12 +9,14 @@ class ProjectCreate(BaseModel):
     name: str
     description: str | None = None
     genre: str | None = None
+    dimension: str = "3d"  # "2d" ou "3d"
 
 
 class ProjectUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     genre: str | None = None
+    dimension: str | None = None
 
 
 class ProjectOut(BaseModel):
@@ -24,6 +26,7 @@ class ProjectOut(BaseModel):
     name: str
     description: str | None
     genre: str | None
+    dimension: str
     status: ProjectStatus
     gameplay_graph: dict | None
     scene_graph: dict | None

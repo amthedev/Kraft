@@ -24,6 +24,7 @@ async def _run_pixel(project_id: int) -> None:
         if not project:
             return
 
+        dimension = getattr(project, "dimension", "3d") or "3d"
         art_bible = project.art_bible or {}
         assets_to_generate = art_bible.get("assets", [])
 
@@ -51,6 +52,7 @@ async def _run_pixel(project_id: int) -> None:
                     asset_name=name,
                     asset_description=description,
                     art_bible=art_bible,
+                    dimension=dimension,
                 )
 
                 asset = Asset(

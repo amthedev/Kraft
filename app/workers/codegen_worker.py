@@ -27,6 +27,7 @@ async def _run_codegen(project_id: int) -> None:
         await db.commit()
 
         try:
+            dimension = getattr(project, "dimension", "3d") or "3d"
             files = await generate_godot_project(
                 project_id,
                 project.gameplay_graph or {},
@@ -36,10 +37,11 @@ async def _run_codegen(project_id: int) -> None:
                 quest_graph=project.quest_graph,
                 dialogue_graph=project.dialogue_graph,
                 art_bible=project.art_bible,
+                dimension=dimension,
             )
 
             if files:
-                write_project_files(project_id, files)
+                write_project_files(project_id, files, dimension=dimension)
                 project.status = ProjectStatus.ready
             else:
                 project.status = ProjectStatus.error

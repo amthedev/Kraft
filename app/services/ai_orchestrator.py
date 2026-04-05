@@ -182,16 +182,16 @@ Você retorna SEMPRE um JSON estruturado com os grafos do jogo atualizados:
 
 REGRAS CRÍTICAS:
 - Nunca retorne grafos vazios — preencha com detalhes ricos e criativos
-- Para jogos 3D: inclua pelo menos 10 modelos_3d no gameplay_graph
-- Para jogos 2D pixel art: inclua sprite sheets com frames de animação no art_bible
+- O campo "dimension" no estado do projeto define o tipo: "2d" ou "3d" — SEMPRE respeite
+- Se dimension="3d": inclua pelo menos 10 modelos_3d no gameplay_graph; art_bible.style="3d_realistic" ou "low_poly"
+- Se dimension="2d": art_bible.style="pixel_art_2d"; inclua sprites com múltiplos frames de animação; NÃO inclua models_3d
+- Para 2D: art_bible.assets deve ter personagens (32x32 ou 48x48, 4+ frames), tilesets (16x16), backgrounds (64x64), UI
+- Para 3D: art_bible.assets são texturas e portraits; models_3d são os assets principais
 - Gere pelo menos 3 regiões no world_graph com POIs detalhados
 - Gere pelo menos 15 NPCs no character_graph com personalidades únicas
 - Gere pelo menos 5 missões principais + 10 secundárias no quest_graph
 - Use GDScript para todo o código Godot — nunca C#
 - Preencha narrative_graph, economy_graph, dialogue_graph com profundidade narrativa
-- Se o usuário pedir um jogo "estilo RDR2 ou GTA": gere mundo aberto massivo 3D fotorrealista
-- Se pedir "pixel art": priorize sprites animados, tilesets e atmosfera 2D
-- Se pedir ambos: separe claramente no art_bible os estilos por camada
 """
 
 
@@ -212,10 +212,12 @@ async def orchestrate(project: Project, user_message: str, db) -> None:
         messages.append({"role": msg.role.value, "content": msg.content})
 
     # Contexto completo com todos os 9 grafos
+    dimension = getattr(project, "dimension", "3d") or "3d"
     project_context = json.dumps(
         {
             "name": project.name,
             "genre": project.genre,
+            "dimension": dimension,
             "status": project.status.value,
             "gameplay_graph": project.gameplay_graph,
             "scene_graph": project.scene_graph,

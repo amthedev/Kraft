@@ -31,6 +31,7 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     genre: Mapped[str | None] = mapped_column(String(64))
+    dimension: Mapped[str] = mapped_column(String(8), default="3d", nullable=False, server_default="3d")
     status: Mapped[ProjectStatus] = mapped_column(Enum(ProjectStatus), default=ProjectStatus.draft, nullable=False)
 
     # IR aberto — grafo semântico do jogo
