@@ -14,7 +14,7 @@ import zipfile
 from pathlib import Path
 
 from app.config import settings
-from app.services.storage import upload_asset
+from app.services.storage import upload_asset, _storage_configured
 
 WEB_EXPORT_PRESET = """\
 [preset.0]
@@ -85,8 +85,12 @@ async def build_and_upload(project_id: int, build_id: int) -> tuple[str | None, 
             if file.is_file():
                 key = f"builds/{project_id}/{build_id}/web/{file.relative_to(web_dir)}"
                 content_type = _guess_content_type(file.suffix)
-                await upload_asset(key, file.read_bytes(), content_type=content_type)
-        web_url = f"{settings.storage_public_url}/builds/{project_id}/{build_id}/web/index.html"
+                local_or_remote = await upload_asset(key, file.read_bytes(), content_type=content_type)
+
+        if _storage_configured():
+            web_url = f"{settings.storage_public_url}/builds/{project_id}/{build_id}/web/index.html"
+        else:
+            web_url = f"/uploads/builds/{project_id}/{build_id}/web/index.html"
 
     # Export ZIP do projeto Godot
     zip_url = None
@@ -99,7 +103,11 @@ async def build_and_upload(project_id: int, build_id: int) -> tuple[str | None, 
     zip_bytes = zip_path.read_bytes()
     zip_key = f"builds/{project_id}/{build_id}/project.zip"
     await upload_asset(zip_key, zip_bytes, content_type="application/zip")
-    zip_url = f"{settings.storage_public_url}/{zip_key}"
+
+    if _storage_configured():
+        zip_url = f"{settings.storage_public_url}/{zip_key}"
+    else:
+        zip_url = f"/uploads/{zip_key}"
 
     return web_url, zip_url
 
